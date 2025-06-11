@@ -7,7 +7,9 @@ export interface IStorage {
       tags: Array<StorageTag>;
       savePath: string;
     },
-  ): Promise<{ urls: string }>;
+  ): Promise<{
+    result: Array<{ key: string; filePath: string; uploadUrl: string }>;
+  }>;
 
   removeTag(savePath: string, tags: Array<StorageTag>): Promise<void>;
 }

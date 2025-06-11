@@ -56,8 +56,9 @@ export class S3Storage implements IStorage {
       savePath: string;
       headers?: Record<string, string>;
     },
-  ): Promise<{ urls: string }> {
-    const urls: string[] = [];
+  ) {
+    const result: Array<{ key: string; filePath: string; uploadUrl: string }> =
+      [];
 
     for (const { key, filePath } of keys) {
       const s3Key = `${options.savePath}/${key}`;
@@ -91,14 +92,16 @@ export class S3Storage implements IStorage {
         ContentDisposition: "inline",
       });
 
-      await s3.send(command);
+      result.push({
+        key,
+        filePath,
+        uploadUrl: `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Key}`,
+      });
 
-      urls.push(
-        `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Key}`,
-      );
+      await s3.send(command);
     }
 
-    return { urls: urls.join(",") };
+    return { result };
   }
 
   async removeTag(savePath: string, tags: Array<StorageTag>): Promise<void> {
