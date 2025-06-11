@@ -12,7 +12,7 @@ const result = await storage.saveFiles(
   ],
   {
     tags: ["delete:1d"],
-    savePath: "6849d994557780049ca304c3",
+    savePath: "test",
     headers: {
       cookie: "rwbsessionid=7cemeq3mt3o2go3psri3ehrkjf",
     },

@@ -12,6 +12,7 @@ import axios from "axios";
 import { IStorage } from "../models/storage/storage.js";
 import { StorageTag } from "../models/storage/tags.js";
 import { ReadStream } from "node:fs";
+import { Jimp } from "jimp";
 
 config();
 
@@ -83,6 +84,14 @@ export class S3Storage implements IStorage {
         )
         .join("&");
 
+      if (!stream && !buffer) {
+        throw new Error("buffer or stream not set");
+      }
+
+      const image = buffer
+        ? await Jimp.fromBuffer(buffer)
+        : await Jimp.read(filePath);
+
       const command = new PutObjectCommand({
         Body: buffer || stream,
         Bucket: BUCKET_NAME,
@@ -90,6 +99,10 @@ export class S3Storage implements IStorage {
         Tagging: tagString || undefined,
         ContentType: `image/${extractFileInfo(key).extension}`,
         ContentDisposition: "inline",
+        Metadata: {
+          "img-width": image.width.toString(),
+          "img-height": image.height.toString(),
+        },
       });
 
       result.push({

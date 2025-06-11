@@ -32,11 +32,11 @@ export const handler = async (event: S3Event) => {
     const buffer = Buffer.from(axiosResponse.data);
     const image = await Jimp.fromBuffer(buffer);
 
-    const resizedImage = await image
-      .resize({
-        w: 110,
-      })
-      .getBuffer(JimpMime.jpeg);
+    const newImage = image.resize({
+      w: 110,
+    });
+
+    const resizedImage = await newImage.getBuffer(JimpMime.jpeg);
 
     const miniKey = key.replace(/([^/]+)$/, "mini_$1");
     const taggingRes = await s3.send(
@@ -66,6 +66,10 @@ export const handler = async (event: S3Event) => {
         Body: resizedImage,
         ContentType: JimpMime.jpeg,
         Tagging: tagString,
+        Metadata: {
+          "img-width": newImage.width.toString(),
+          "img-height": newImage.height.toString(),
+        },
       }),
     );
 
