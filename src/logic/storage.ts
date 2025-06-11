@@ -54,6 +54,7 @@ export class S3Storage implements IStorage {
     options: {
       tags: Array<StorageTag>;
       savePath: string;
+      headers?: Record<string, string>;
     },
   ): Promise<{ urls: string }> {
     const urls: string[] = [];
@@ -67,6 +68,7 @@ export class S3Storage implements IStorage {
       if (isHttp(filePath)) {
         const axiosResponse = await axios.get(filePath, {
           responseType: "arraybuffer",
+          headers: options.headers,
         });
         buffer = Buffer.from(axiosResponse.data);
       } else {
