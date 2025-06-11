@@ -87,7 +87,6 @@ export class S3Storage implements IStorage {
         Tagging: tagString || undefined,
         ContentType: `image/${extractFileInfo(key).extension}`,
         ContentDisposition: "inline",
-        //ContentLength: contentLength ? parseInt(contentLength, 10) : undefined,
       });
 
       await s3.send(command);
