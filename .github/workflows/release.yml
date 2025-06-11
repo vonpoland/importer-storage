@@ -1,0 +1,44 @@
+name: Release Package
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+          always-auth: true
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run build
+        run: npm run build
+
+      - name: Set up Git user
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version and publish
+        run: |
+          npm version patch -m "Release version %s"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:main --follow-tags
+
+      - name: Publish to NPM
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

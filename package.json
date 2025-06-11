@@ -1,0 +1,36 @@
+{
+  "name": "import-calculator",
+  "private": false,
+  "version": "1.0.18",
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "tsup --format cjs,esm,iife --global-name CalculatorModule --target es2015",
+    "lint": "eslint .",
+    "prettier": "prettier --check .",
+    "prettier:fix": "prettier --write .",
+    "test": "vitest",
+    "upload:test": "npx tsx scripts/upload.ts",
+    "remove-tag": "npx tsx scripts/remove-tag.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.826.0",
+    "axios": "^1.9.0",
+    "dotenv": "^16.5.0",
+    "globals": "^16.2.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.19.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.19.0",
+    "prettier": "^3.4.2",
+    "tsup": "^8.3.6",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.34.0",
+    "vitest": "^3.0.5"
+  }
+}
