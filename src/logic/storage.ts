@@ -61,15 +61,18 @@ export class S3Storage implements IStorage {
     for (const { key, filePath } of keys) {
       const s3Key = `${options.savePath}/${key}`;
 
-      let stream: ReadStream;
+      let stream: ReadStream | undefined = undefined;
+      let buffer: Buffer | undefined = undefined;
 
       if (isHttp(filePath)) {
-        stream = await axios.get(filePath, {
-          responseType: "stream",
+        const axiosResponse = await axios.get(filePath, {
+          responseType: "arraybuffer",
         });
+        buffer = Buffer.from(axiosResponse.data);
+      } else {
+        stream = createReadStream(filePath);
       }
 
-      stream = createReadStream(filePath);
       const tagString = options.tags
         .map(
           (tag) =>
@@ -78,12 +81,13 @@ export class S3Storage implements IStorage {
         .join("&");
 
       const command = new PutObjectCommand({
-        Body: stream,
+        Body: buffer || stream,
         Bucket: BUCKET_NAME,
         Key: s3Key,
         Tagging: tagString || undefined,
         ContentType: `image/${extractFileInfo(key).extension}`,
         ContentDisposition: "inline",
+        //ContentLength: contentLength ? parseInt(contentLength, 10) : undefined,
       });
 
       await s3.send(command);
