@@ -6,4 +6,4 @@ config();
 
 const app = new App();
 
-new ScrapperStack(app, "ScrapperUploadStack");
+new ScrapperStack(app, process.env.STACK_NAME || "ScrapperUploadStack");

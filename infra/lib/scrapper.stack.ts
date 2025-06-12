@@ -11,7 +11,7 @@ export class ScrapperStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    const bucket = new Bucket(this, "ScrapperImageBucket", {
+    const bucket = new Bucket(this, "cdn", {
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       blockPublicAccess: new BlockPublicAccess({
