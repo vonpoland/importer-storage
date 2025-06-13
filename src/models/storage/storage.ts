@@ -8,6 +8,7 @@ export interface IStorage {
       savePath: string;
     },
   ): Promise<{
+    errored: Array<{ key: string; filePath: string; message: string }>;
     result: Array<{ key: string; filePath: string; uploadUrl: string }>;
   }>;
 
