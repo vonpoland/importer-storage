@@ -60,61 +60,73 @@ export class S3Storage implements IStorage {
   ) {
     const result: Array<{ key: string; filePath: string; uploadUrl: string }> =
       [];
+    const errored: Array<{ key: string; filePath: string; message: string }> =
+      [];
 
     for (const { key, filePath } of keys) {
-      const s3Key = `${options.savePath}/${key}`;
+      try {
+        const s3Key = `${options.savePath}/${key}`;
 
-      let stream: ReadStream | undefined = undefined;
-      let buffer: Buffer | undefined = undefined;
+        let stream: ReadStream | undefined = undefined;
+        let buffer: Buffer | undefined = undefined;
 
-      if (isHttp(filePath)) {
-        const axiosResponse = await axios.get(filePath, {
-          responseType: "arraybuffer",
-          headers: options.headers,
+        if (isHttp(filePath)) {
+          const axiosResponse = await axios.get(filePath, {
+            responseType: "arraybuffer",
+            headers: options.headers,
+          });
+          buffer = Buffer.from(axiosResponse.data);
+        } else {
+          stream = createReadStream(filePath);
+        }
+
+        const tagString = options.tags
+          .map(
+            (tag) =>
+              `${encodeURIComponent(tag.split(":")[0])}=${encodeURIComponent(tag.split(":")[1])}`,
+          )
+          .join("&");
+
+        if (!stream && !buffer) {
+          throw new Error("buffer or stream not set");
+        }
+
+        const image = buffer
+          ? await Jimp.fromBuffer(buffer)
+          : await Jimp.read(filePath);
+
+        const command = new PutObjectCommand({
+          Body: buffer || stream,
+          Bucket: BUCKET_NAME,
+          Key: s3Key,
+          Tagging: tagString || undefined,
+          ContentType: `image/${extractFileInfo(key).extension}`,
+          ContentDisposition: "inline",
+          Metadata: {
+            "img-width": image.width.toString(),
+            "img-height": image.height.toString(),
+          },
         });
-        buffer = Buffer.from(axiosResponse.data);
-      } else {
-        stream = createReadStream(filePath);
+
+        result.push({
+          key,
+          filePath,
+          uploadUrl: `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Key}`,
+        });
+
+        await s3.send(command);
+      } catch (e) {
+        const error = e as { message: string };
+        console.warn(error.message);
+        errored.push({
+          key,
+          filePath,
+          message: error.message,
+        });
       }
-
-      const tagString = options.tags
-        .map(
-          (tag) =>
-            `${encodeURIComponent(tag.split(":")[0])}=${encodeURIComponent(tag.split(":")[1])}`,
-        )
-        .join("&");
-
-      if (!stream && !buffer) {
-        throw new Error("buffer or stream not set");
-      }
-
-      const image = buffer
-        ? await Jimp.fromBuffer(buffer)
-        : await Jimp.read(filePath);
-
-      const command = new PutObjectCommand({
-        Body: buffer || stream,
-        Bucket: BUCKET_NAME,
-        Key: s3Key,
-        Tagging: tagString || undefined,
-        ContentType: `image/${extractFileInfo(key).extension}`,
-        ContentDisposition: "inline",
-        Metadata: {
-          "img-width": image.width.toString(),
-          "img-height": image.height.toString(),
-        },
-      });
-
-      result.push({
-        key,
-        filePath,
-        uploadUrl: `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Key}`,
-      });
-
-      await s3.send(command);
     }
 
-    return { result };
+    return { result, errored };
   }
 
   async removeTag(savePath: string, tags: Array<StorageTag>): Promise<void> {
