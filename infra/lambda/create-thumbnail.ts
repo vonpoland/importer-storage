@@ -33,7 +33,7 @@ export const handler = async (event: S3Event) => {
     const image = await Jimp.fromBuffer(buffer);
 
     const newImage = image.resize({
-      w: 110,
+      w: Number(process.env.AWS_THUMBNAIL_WIDTH),
     });
 
     const resizedImage = await newImage.getBuffer(JimpMime.jpeg);

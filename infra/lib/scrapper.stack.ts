@@ -78,6 +78,7 @@ export class ScrapperStack extends Stack {
         timeout: Duration.seconds(120),
         environment: {
           AWS_BUCKET_NAME: bucket.bucketName,
+          AWS_THUMBNAIL_WIDTH: process.env.AWS_THUMBNAIL_WIDTH || "110",
         },
       },
     );
