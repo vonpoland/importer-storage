@@ -1,14 +1,29 @@
-import { Duration, Stack, StackProps, RemovalPolicy } from "aws-cdk-lib";
+import {
+  aws_iam,
+  Duration,
+  RemovalPolicy,
+  Stack,
+  StackProps,
+} from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as path from "path";
 import { Runtime } from "aws-cdk-lib/aws-lambda";
-import { Bucket, EventType, BlockPublicAccess } from "aws-cdk-lib/aws-s3";
+import {
+  BlockPublicAccess,
+  Bucket,
+  EventType,
+  HttpMethods,
+} from "aws-cdk-lib/aws-s3";
 import { S3EventSource } from "aws-cdk-lib/aws-lambda-event-sources";
-import { aws_iam } from "aws-cdk-lib";
 
 export class ScrapperStack extends Stack {
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(
+    scope: Construct,
+    id: string,
+    props?: StackProps,
+    corsPaths: Array<string> = [],
+  ) {
     super(scope, id, props);
 
     const bucket = new Bucket(this, "cdn", {
@@ -20,6 +35,18 @@ export class ScrapperStack extends Stack {
         blockPublicPolicy: false,
         restrictPublicBuckets: false,
       }),
+      cors:
+        corsPaths.length > 0
+          ? [
+              {
+                allowedMethods: [HttpMethods.GET, HttpMethods.HEAD],
+                allowedOrigins: corsPaths,
+                allowedHeaders: ["*"],
+                exposedHeaders: [],
+                maxAge: 3000,
+              },
+            ]
+          : undefined,
     });
 
     bucket.addLifecycleRule({
