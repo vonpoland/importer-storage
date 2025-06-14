@@ -13,7 +13,7 @@ import { IStorage } from "../models/storage/storage.js";
 import { StorageTag } from "../models/storage/tags.js";
 import { ReadStream } from "node:fs";
 import { Jimp } from "jimp";
-
+import { HttpsProxyAgent } from "https-proxy-agent";
 config();
 
 if (!process.env.AWS_ACCESS_KEY_ID) {
@@ -57,20 +57,15 @@ export class S3Storage implements IStorage {
       savePath: string;
       headers?: Record<string, string>;
       logging?: boolean;
-      proxy: {
-        host: string;
-        port: number;
-        auth: {
-          username: string;
-          password: string;
-        };
-      };
+      proxyUrl?: string;
     },
   ) {
     const result: Array<{ key: string; filePath: string; uploadUrl: string }> =
       [];
     const errored: Array<{ key: string; filePath: string; message: string }> =
       [];
+    const proxyAgent =
+      options?.proxyUrl && new HttpsProxyAgent(options?.proxyUrl);
 
     for (const { key, filePath } of keys) {
       try {
@@ -86,7 +81,7 @@ export class S3Storage implements IStorage {
           const axiosResponse = await axios.get(filePath, {
             responseType: "arraybuffer",
             headers: options.headers,
-            proxy: options.proxy,
+            httpsAgent: proxyAgent,
           });
           if (options.logging) {
             console.info(`[Success downloading] ${filePath}`);

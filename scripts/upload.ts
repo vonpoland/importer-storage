@@ -5,17 +5,17 @@ const storage = new Storage.S3Storage();
 const result = await storage.saveFiles(
   [
     {
-      key: "wooto.jpg",
       filePath:
-        "https://wooto-s3.s3.eu-central-003.backblazeb2.com/images/3c8bedcc-845e-4849-a4bd-1e8289b47400/6e64176f-ecbd-4dfe-9814-10f8b157aaa5/w_1920_h_1440_47617adf-112b-4338-856d-aa8b89f62fd5.jpeg",
+        "https://cdn.autobid.de/data/cars/30905/3090456/84039101_hd.jpg",
+
+      key: "84039101_hd.jpg",
     },
   ],
   {
     tags: ["delete:1d"],
-    savePath: "test",
-    headers: {
-      cookie: "rwbsessionid=7cemeq3mt3o2go3psri3ehrkjf",
-    },
+    savePath: "test/mk",
+    logging: true,
+    proxyUrl: "http://zipemgwh:a4gp059njzh1@138.128.148.73:6633",
   },
 );
 

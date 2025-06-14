@@ -8,14 +8,7 @@ export interface IStorage {
       savePath: string;
       headers?: Record<string, string>;
       logging?: boolean;
-      proxy?: {
-        host: string;
-        port: number;
-        auth: {
-          username: string;
-          password: string;
-        };
-      };
+      proxyUrl?: string;
     },
   ): Promise<{
     errored: Array<{ key: string; filePath: string; message: string }>;
