@@ -6,6 +6,7 @@ export interface IStorage {
     options: {
       tags: Array<StorageTag>;
       savePath: string;
+      headers?: Record<string, string>;
     },
   ): Promise<{
     errored: Array<{ key: string; filePath: string; message: string }>;
