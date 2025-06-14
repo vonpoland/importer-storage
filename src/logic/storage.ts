@@ -56,6 +56,15 @@ export class S3Storage implements IStorage {
       tags: Array<StorageTag>;
       savePath: string;
       headers?: Record<string, string>;
+      logging?: boolean;
+      proxy: {
+        host: string;
+        port: number;
+        auth: {
+          username: string;
+          password: string;
+        };
+      };
     },
   ) {
     const result: Array<{ key: string; filePath: string; uploadUrl: string }> =
@@ -71,10 +80,17 @@ export class S3Storage implements IStorage {
         let buffer: Buffer | undefined = undefined;
 
         if (isHttp(filePath)) {
+          if (options.logging) {
+            console.info(`[Start downloading] ${filePath}`);
+          }
           const axiosResponse = await axios.get(filePath, {
             responseType: "arraybuffer",
             headers: options.headers,
+            proxy: options.proxy,
           });
+          if (options.logging) {
+            console.info(`[Success downloading] ${filePath}`);
+          }
           buffer = Buffer.from(axiosResponse.data);
         } else {
           stream = createReadStream(filePath);
