@@ -16,11 +16,11 @@ import { Jimp } from "jimp";
 import { HttpsProxyAgent } from "https-proxy-agent";
 config();
 
-if (!process.env.AWS_ACCESS_KEY_ID) {
+if (!process.env.AWS_EXECUTION_ENV && !process.env.AWS_ACCESS_KEY_ID) {
   throw new Error("'AWS_ACCESS_KEY_ID' not set");
 }
 
-if (!process.env.AWS_ACCESS_KEY) {
+if (!process.env.AWS_EXECUTION_ENV && !process.env.AWS_ACCESS_KEY) {
   throw new Error("'AWS_ACCESS_KEY' not set");
 }
 
@@ -33,13 +33,19 @@ function extractFileInfo(filePath: string) {
   return { key, extension: extension || "jpg" };
 }
 
-const s3 = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_ACCESS_KEY,
-  },
-});
+const s3 = new S3Client(
+  !process.env.AWS_EXECUTION_ENV &&
+  process.env.AWS_ACCESS_KEY_ID &&
+  process.env.AWS_ACCESS_KEY
+    ? {
+        region: process.env.AWS_REGION,
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.AWS_ACCESS_KEY,
+        },
+      }
+    : undefined,
+);
 const BUCKET_NAME = process.env.AWS_BUCKET_NAME as string;
 
 if (!BUCKET_NAME) {
