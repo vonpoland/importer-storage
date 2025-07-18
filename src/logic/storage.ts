@@ -36,15 +36,16 @@ function extractFileInfo(filePath: string) {
 const s3 = new S3Client(
   !process.env.AWS_EXECUTION_ENV &&
   process.env.AWS_ACCESS_KEY_ID &&
-  process.env.AWS_ACCESS_KEY
+  process.env.AWS_ACCESS_KEY &&
+  process.env.AWS_REGION
     ? {
         region: process.env.AWS_REGION,
         credentials: {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-          secretAccessKey: process.env.AWS_ACCESS_KEY,
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.AWS_ACCESS_KEY!,
         },
       }
-    : undefined,
+    : {},
 );
 const BUCKET_NAME = process.env.AWS_BUCKET_NAME as string;
 
