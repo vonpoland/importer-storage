@@ -1,3 +1,6 @@
 npx cdk bootstrap - na nowym region
 
-npm run deploy
+
+CHECK -> STACK_NAME - env variable npm run deploy
+
+

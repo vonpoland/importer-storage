@@ -4,7 +4,8 @@
   "scripts": {
     "build": "tsc",
     "cdk": "cdk",
-    "deploy": "npx cdk --app \"npx ts-node bin/app.ts\" deploy --all --require-approval never"
+    "deploy": "npx cdk --app \"npx ts-node bin/app.ts\" deploy --all --require-approval never",
+    "destroy": "npx cdk --app \"npx ts-node bin/app.ts\" destroy --all --force"
   },
   "dependencies": {
     "@aws-sdk/client-lambda": "^3.826.0",
