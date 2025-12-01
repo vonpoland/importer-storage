@@ -15,6 +15,7 @@ import { ReadStream } from "node:fs";
 import { Jimp } from "jimp";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import { performance } from "perf_hooks";
+import pLimit from "p-limit";
 
 config();
 
@@ -57,17 +58,161 @@ if (!BUCKET_NAME) {
 function isHttp(url: string) {
   return url.startsWith("http://") || url.startsWith("https://");
 }
+
+type Options = {
+  tags: Array<StorageTag>;
+  savePath: string;
+  headers?: Record<string, string>;
+  logging?: boolean;
+  proxyUrl?: string;
+  parallelLimit?: number;
+};
+
+const processRecord = async (
+  {
+    filePath,
+    key,
+  }: {
+    key: string;
+    filePath: string;
+  },
+  options: Options,
+  proxyAgent?: HttpsProxyAgent<string>,
+): Promise<{
+  key: string;
+  filePath: string;
+  uploadUrl?: string;
+  message?: string;
+  error: boolean;
+}> => {
+  const start = performance.now();
+
+  if (options.logging) {
+    console.info(`\n[Processing Start] key=${key}, filePath=${filePath}`);
+  }
+
+  try {
+    const s3Key = `${options.savePath}/${key}`;
+    if (options.logging) {
+      console.info(`[S3 Key] ${s3Key}`);
+    }
+
+    let stream: ReadStream | undefined = undefined;
+    let buffer: Buffer | undefined = undefined;
+
+    if (isHttp(filePath)) {
+      if (options.logging) {
+        console.info(`[Download Start] ${filePath}`);
+      }
+
+      const axiosResponse = await axios.get(filePath, {
+        responseType: "arraybuffer",
+        headers: options.headers,
+        httpsAgent: proxyAgent,
+      });
+
+      if (options.logging) {
+        console.info(`[Download Success] ${filePath}`);
+      }
+
+      buffer = Buffer.from(axiosResponse.data);
+    } else {
+      if (options.logging) {
+        console.info(`[Read from FS] ${filePath}`);
+      }
+
+      stream = createReadStream(filePath);
+    }
+
+    const tagString = options.tags
+      .map(
+        (tag) =>
+          `${encodeURIComponent(tag.split(":")[0])}=${encodeURIComponent(tag.split(":")[1])}`,
+      )
+      .join("&");
+
+    if (!stream && !buffer) {
+      if (options.logging) {
+        console.warn(`[Error] Neither stream nor buffer is set for ${key}`);
+      }
+      throw new Error("buffer or stream not set");
+    }
+
+    if (options.logging) {
+      console.info(`[Image Processing Start] ${key}`);
+    }
+
+    const image = buffer
+      ? await Jimp.fromBuffer(buffer)
+      : await Jimp.read(filePath);
+
+    if (options.logging) {
+      console.info(
+        `[Image Loaded] key=${key}, width=${image.width}, height=${image.height}`,
+      );
+    }
+
+    const command = new PutObjectCommand({
+      Body: buffer || stream,
+      Bucket: BUCKET_NAME,
+      Key: s3Key,
+      Tagging: tagString || undefined,
+      ContentType: `image/${extractFileInfo(key).extension}`,
+      ContentDisposition: "inline",
+      Metadata: {
+        "img-width": image.width.toString(),
+        "img-height": image.height.toString(),
+      },
+    });
+
+    if (options.logging) {
+      console.info(`[Uploading] ${key} to S3...`);
+    }
+
+    await s3.send(command);
+
+    if (options.logging) {
+      console.info(`[Upload Success] ${key}`);
+    }
+
+    return {
+      error: false,
+      key,
+      filePath,
+      uploadUrl: `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Key}`,
+    };
+  } catch (e) {
+    const error = e as { message: string };
+
+    if (options.logging) {
+      console.error(`[Upload Error] key=${key}, error=${error.message}`);
+    }
+
+    return {
+      error: true,
+      key,
+      filePath,
+      message: error.message,
+    };
+  } finally {
+    const end = performance.now();
+
+    if (options.logging) {
+      console.info(
+        `[Processing End] key=${key}, duration=${(end - start).toFixed(0)}ms`,
+      );
+    }
+  }
+};
+
 export class S3Storage implements IStorage {
   async saveFiles(
     keys: Array<{ key: string; filePath: string }>,
-    options: {
-      tags: Array<StorageTag>;
-      savePath: string;
-      headers?: Record<string, string>;
-      logging?: boolean;
-      proxyUrl?: string;
-    },
+    options: Options,
   ) {
+    const parallelLimit = options.parallelLimit || 2;
+
+    const limit = pLimit(parallelLimit);
     const result: Array<{ key: string; filePath: string; uploadUrl: string }> =
       [];
     const errored: Array<{ key: string; filePath: string; message: string }> =
@@ -77,129 +222,44 @@ export class S3Storage implements IStorage {
 
     if (options.logging) {
       console.info(`[SaveFiles] Start saving ${keys.length} file(s)`);
-      console.time(`[SaveFiles] Total time`);
+      console.time(`[SaveFiles] Total time ${parallelLimit}`);
     }
 
-    for (const { key, filePath } of keys) {
-      const start = performance.now();
+    // keys
 
-      if (options.logging) {
-        console.info(`\n[Processing Start] key=${key}, filePath=${filePath}`);
-      }
-
-      try {
-        const s3Key = `${options.savePath}/${key}`;
-        if (options.logging) {
-          console.info(`[S3 Key] ${s3Key}`);
-        }
-
-        let stream: ReadStream | undefined = undefined;
-        let buffer: Buffer | undefined = undefined;
-
-        if (isHttp(filePath)) {
+    await Promise.all(
+      keys.map((record, index) =>
+        limit(async () => {
           if (options.logging) {
-            console.info(`[Download Start] ${filePath}`);
+            console.info(
+              `Running p-limit task ${index}, limit: ${parallelLimit}`,
+            );
           }
-
-          const axiosResponse = await axios.get(filePath, {
-            responseType: "arraybuffer",
-            headers: options.headers,
-            httpsAgent: proxyAgent,
-          });
-
-          if (options.logging) {
-            console.info(`[Download Success] ${filePath}`);
-          }
-
-          buffer = Buffer.from(axiosResponse.data);
-        } else {
-          if (options.logging) {
-            console.info(`[Read from FS] ${filePath}`);
-          }
-
-          stream = createReadStream(filePath);
-        }
-
-        const tagString = options.tags
-          .map(
-            (tag) =>
-              `${encodeURIComponent(tag.split(":")[0])}=${encodeURIComponent(tag.split(":")[1])}`,
-          )
-          .join("&");
-
-        if (!stream && !buffer) {
-          if (options.logging) {
-            console.warn(`[Error] Neither stream nor buffer is set for ${key}`);
-          }
-          throw new Error("buffer or stream not set");
-        }
-
-        if (options.logging) {
-          console.info(`[Image Processing Start] ${key}`);
-        }
-
-        const image = buffer
-          ? await Jimp.fromBuffer(buffer)
-          : await Jimp.read(filePath);
-
-        if (options.logging) {
-          console.info(
-            `[Image Loaded] key=${key}, width=${image.width}, height=${image.height}`,
+          const processResult = await processRecord(
+            record,
+            options,
+            proxyAgent || undefined,
           );
-        }
 
-        const command = new PutObjectCommand({
-          Body: buffer || stream,
-          Bucket: BUCKET_NAME,
-          Key: s3Key,
-          Tagging: tagString || undefined,
-          ContentType: `image/${extractFileInfo(key).extension}`,
-          ContentDisposition: "inline",
-          Metadata: {
-            "img-width": image.width.toString(),
-            "img-height": image.height.toString(),
-          },
-        });
-
-        result.push({
-          key,
-          filePath,
-          uploadUrl: `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Key}`,
-        });
-
-        if (options.logging) {
-          console.info(`[Uploading] ${key} to S3...`);
-        }
-
-        await s3.send(command);
-
-        if (options.logging) {
-          console.info(`[Upload Success] ${key}`);
-        }
-      } catch (e) {
-        const error = e as { message: string };
-
-        if (options.logging) {
-          console.error(`[Upload Error] key=${key}, error=${error.message}`);
-        }
-
-        errored.push({
-          key,
-          filePath,
-          message: error.message,
-        });
-      }
-
-      const end = performance.now();
-      if (options.logging) {
-        console.info(
-          `[Processing End] key=${key}, duration=${(end - start).toFixed(0)}ms`,
-        );
-      }
-    }
+          if (processResult.message) {
+            errored.push({
+              key: processResult.key,
+              filePath: processResult.filePath,
+              message: processResult.message,
+            });
+          } else if (processResult.uploadUrl) {
+            result.push({
+              key: processResult.key,
+              filePath: processResult.filePath,
+              uploadUrl: processResult.uploadUrl,
+            });
+          }
+        }),
+      ),
+    );
 
     if (options.logging) {
-      console.timeEnd(`[SaveFiles] Total time`);
+      console.timeEnd(`[SaveFiles] Total time ${parallelLimit}`);
       console.info(
         `[SaveFiles] Completed. Success: ${result.length}, Failed: ${errored.length}`,
       );
