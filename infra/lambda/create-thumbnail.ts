@@ -15,6 +15,10 @@ export const handler = async (event: S3Event) => {
   }
 
   const s3 = new S3Client({});
+  if (event.Records.length === 0) {
+    console.warn("empty records finish");
+    return;
+  }
 
   for (const record of event.Records) {
     const key = record.s3.object.key;

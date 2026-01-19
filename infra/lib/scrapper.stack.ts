@@ -73,8 +73,8 @@ export class ScrapperStack extends Stack {
       "CreateThumbnail",
       {
         entry: path.join(__dirname, "../", "lambda", "create-thumbnail.ts"),
-        runtime: Runtime.NODEJS_20_X,
-        memorySize: 256,
+        runtime: Runtime.NODEJS_22_X,
+        memorySize: Number(process.env.MEMORY_SIZE) || 256,
         timeout: Duration.seconds(120),
         environment: {
           AWS_BUCKET_NAME: bucket.bucketName,
