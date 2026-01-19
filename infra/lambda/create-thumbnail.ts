@@ -5,7 +5,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { S3Event } from "aws-lambda";
 import axios from "axios";
-import { Jimp, JimpMime } from "jimp";
+import sharp from "sharp";
 
 export const handler = async (event: S3Event) => {
   const BUCKET_NAME = process.env.AWS_BUCKET_NAME as string;
@@ -13,7 +13,9 @@ export const handler = async (event: S3Event) => {
   if (!BUCKET_NAME) {
     throw new Error("'AWS_BUCKET_NAME' name not set");
   }
-
+  console.info(
+    `Using sharp! processing record ${JSON.stringify(event.Records)}`,
+  );
   const s3 = new S3Client({});
   if (event.Records.length === 0) {
     console.warn("empty records finish");
@@ -34,13 +36,14 @@ export const handler = async (event: S3Event) => {
       responseType: "arraybuffer",
     });
     const buffer = Buffer.from(axiosResponse.data);
-    const image = await Jimp.fromBuffer(buffer);
 
-    const newImage = image.resize({
-      w: Number(process.env.AWS_THUMBNAIL_WIDTH),
-    });
-
-    const resizedImage = await newImage.getBuffer(JimpMime.jpeg);
+    const resizedImage = await sharp(buffer)
+      .resize({
+        width: Number(process.env.AWS_THUMBNAIL_WIDTH),
+        withoutEnlargement: true,
+      })
+      .jpeg({ quality: 80 })
+      .toBuffer();
 
     const miniKey = key.replace(/([^/]+)$/, "mini_$1");
     const taggingRes = await s3.send(
@@ -63,16 +66,18 @@ export const handler = async (event: S3Event) => {
 
     console.log(`Save with tag ${tagString}`);
 
+    const imageInfo = await sharp(resizedImage).metadata();
+
     await s3.send(
       new PutObjectCommand({
         Bucket: BUCKET_NAME,
         Key: miniKey,
         Body: resizedImage,
-        ContentType: JimpMime.jpeg,
+        ContentType: "image/jpeg",
         Tagging: tagString,
         Metadata: {
-          "img-width": newImage.width.toString(),
-          "img-height": newImage.height.toString(),
+          "img-width": imageInfo.width?.toString() || "0",
+          "img-height": imageInfo.height?.toString() || "0",
         },
       }),
     );
