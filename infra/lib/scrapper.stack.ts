@@ -1,5 +1,6 @@
 import {
   aws_iam,
+  aws_lambda,
   Duration,
   RemovalPolicy,
   Stack,
@@ -25,6 +26,13 @@ export class ScrapperStack extends Stack {
     corsPaths: Array<string> = [],
   ) {
     super(scope, id, props);
+
+    const sharpLayer = new aws_lambda.LayerVersion(this, "SharpLayer", {
+      compatibleRuntimes: [Runtime.NODEJS_22_X],
+      code: aws_lambda.Code.fromAsset(
+        path.join(__dirname, "../lambda-layer/sharp/layer.zip"),
+      ),
+    });
 
     const bucket = new Bucket(this, "cdn", {
       removalPolicy: RemovalPolicy.DESTROY,
@@ -76,6 +84,7 @@ export class ScrapperStack extends Stack {
         runtime: Runtime.NODEJS_22_X,
         memorySize: Number(process.env.MEMORY_SIZE) || 256,
         timeout: Duration.seconds(Number(process.env.LAMBDA_TIMEOUT) || 120),
+        layers: [sharpLayer],
         environment: {
           AWS_BUCKET_NAME: bucket.bucketName,
           AWS_THUMBNAIL_WIDTH: process.env.AWS_THUMBNAIL_WIDTH || "110",
