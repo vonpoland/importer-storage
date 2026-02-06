@@ -13,12 +13,12 @@ export const handler = async (event: S3Event) => {
   if (!BUCKET_NAME) {
     throw new Error("'AWS_BUCKET_NAME' name not set");
   }
-  console.info(
-    `Using sharp! processing record ${JSON.stringify(event.Records)}`,
-  );
+  // console.info(
+  //   `Using sharp! processing record ${JSON.stringify(event.Records)}`,
+  // );
   const s3 = new S3Client({});
   if (event.Records.length === 0) {
-    console.warn("empty records finish");
+    // console.warn("empty records finish");
     return;
   }
 
@@ -26,12 +26,12 @@ export const handler = async (event: S3Event) => {
     const key = record.s3.object.key;
 
     if (key.includes("mini_")) {
-      console.log(`Skip file: ${key}`);
+      // console.log(`Skip file: ${key}`);
       continue;
     }
 
     const originalUrl = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
-    console.info(`Processing ${originalUrl} ${JSON.stringify(record)}`);
+    // console.info(`Processing ${originalUrl} ${JSON.stringify(record)}`);
     const axiosResponse = await axios.get(originalUrl, {
       responseType: "arraybuffer",
     });
@@ -55,7 +55,7 @@ export const handler = async (event: S3Event) => {
 
     const tags = taggingRes.TagSet;
 
-    console.log(`Saving thumbnail with key: ${miniKey}`);
+    // console.log(`Saving thumbnail with key: ${miniKey}`);
     const tagString =
       tags
         ?.map(
@@ -64,7 +64,7 @@ export const handler = async (event: S3Event) => {
         )
         .join("&") || undefined;
 
-    console.log(`Save with tag ${tagString}`);
+    // console.log(`Save with tag ${tagString}`);
 
     const imageInfo = await sharp(resizedImage).metadata();
 
@@ -82,6 +82,6 @@ export const handler = async (event: S3Event) => {
       }),
     );
 
-    console.log(`Thumbnail: ${miniKey} upload success.`);
+    // console.log(`Thumbnail: ${miniKey} upload success.`);
   }
 };

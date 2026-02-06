@@ -76,6 +76,11 @@ export class ScrapperStack extends Stack {
       }),
     );
 
+    // --- Rola bez uprawnień do CloudWatch ---
+    const lambdaRole = new aws_iam.Role(this, "LambdaNoLogsRole", {
+      assumedBy: new aws_iam.ServicePrincipal("lambda.amazonaws.com"),
+    });
+
     const createThumbnailFunction = new NodejsFunction(
       this,
       "CreateThumbnail",
@@ -85,6 +90,7 @@ export class ScrapperStack extends Stack {
         memorySize: Number(process.env.MEMORY_SIZE) || 256,
         timeout: Duration.seconds(Number(process.env.LAMBDA_TIMEOUT) || 120),
         layers: [sharpLayer],
+        role: lambdaRole, // Przypisanie "czystej" roli
         environment: {
           AWS_BUCKET_NAME: bucket.bucketName,
           AWS_THUMBNAIL_WIDTH: process.env.AWS_THUMBNAIL_WIDTH || "110",
