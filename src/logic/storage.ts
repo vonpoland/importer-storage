@@ -276,7 +276,7 @@ export class S3Storage implements IStorage {
     },
   ): Promise<void> {
     const Bucket = options?.bucketName || BUCKET_NAME;
-    console.info(`removeTag to bucket ${Bucket}`);
+    console.info(`RemoveTag to bucket ${Bucket}`);
     const list = await s3.send(
       new ListObjectsCommand({
         Bucket,
@@ -332,7 +332,6 @@ export class S3Storage implements IStorage {
 
     if (!list.Contents) return;
 
-    // Zamień "key:value" na { Key, Value }
     const tagsToAdd = tags
       .map((tag) => {
         const [key, value] = tag.split(":");
@@ -355,14 +354,12 @@ export class S3Storage implements IStorage {
 
       const existing = currentTags.TagSet ?? [];
 
-      // Budujemy mapę tagów po kluczu, żeby łatwo nadpisywać
       const tagMap = new Map<string, string>();
       for (const t of existing) {
         if (!t.Key || t.Value === undefined) continue;
         tagMap.set(t.Key, t.Value);
       }
 
-      // Dodaj / nadpisz tagi z `tags`
       for (const t of tagsToAdd) {
         tagMap.set(t.Key, t.Value);
       }
