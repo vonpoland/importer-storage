@@ -274,7 +274,7 @@ export class S3Storage implements IStorage {
     options?: {
       bucketName: string;
     },
-  ): Promise<void> {
+  ): Promise<boolean> {
     const Bucket = options?.bucketName || BUCKET_NAME;
     console.info(`RemoveTag to bucket ${Bucket}`);
     const list = await s3.send(
@@ -285,7 +285,9 @@ export class S3Storage implements IStorage {
       }),
     );
 
-    if (!list.Contents) return;
+    if (!list.Contents) {
+      return false;
+    }
 
     for (const obj of list.Contents) {
       if (!obj.Key) continue;
@@ -310,6 +312,8 @@ export class S3Storage implements IStorage {
         }),
       );
     }
+
+    return true;
   }
 
   async addTag(
@@ -318,8 +322,11 @@ export class S3Storage implements IStorage {
     options?: {
       bucketName: string;
     },
-  ): Promise<void> {
-    if (!tags.length) return;
+  ): Promise<boolean> {
+    if (!tags.length) {
+      return false;
+    }
+
     const Bucket = options?.bucketName || BUCKET_NAME;
     console.info(`addTag to bucket ${Bucket}`);
     const list = await s3.send(
@@ -330,7 +337,9 @@ export class S3Storage implements IStorage {
       }),
     );
 
-    if (!list.Contents) return;
+    if (!list.Contents) {
+      return false;
+    }
 
     const tagsToAdd = tags
       .map((tag) => {
@@ -340,7 +349,9 @@ export class S3Storage implements IStorage {
       })
       .filter((t): t is { Key: string; Value: string } => t !== null);
 
-    if (!tagsToAdd.length) return;
+    if (!tagsToAdd.length) {
+      return false;
+    }
 
     for (const obj of list.Contents) {
       if (!obj.Key) continue;
@@ -377,5 +388,7 @@ export class S3Storage implements IStorage {
         }),
       );
     }
+
+    return true;
   }
 }

@@ -15,5 +15,19 @@ export interface IStorage {
     result: Array<{ key: string; filePath: string; uploadUrl: string }>;
   }>;
 
-  removeTag(savePath: string, tags: Array<StorageTag>): Promise<void>;
+  removeTag(
+    savePath: string,
+    tags: Array<StorageTag>,
+    options?: {
+      bucketName: string;
+    },
+  ): Promise<boolean>;
+
+  addTag(
+    savePath: string,
+    tags: Array<StorageTag>,
+    options?: {
+      bucketName: string;
+    },
+  ): Promise<boolean>;
 }
