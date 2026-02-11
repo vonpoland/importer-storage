@@ -303,4 +303,67 @@ export class S3Storage implements IStorage {
       );
     }
   }
+
+  async addTag(savePath: string, tags: Array<StorageTag>): Promise<void> {
+    if (!tags.length) return;
+
+    const list = await s3.send(
+      new ListObjectsCommand({
+        Bucket: BUCKET_NAME,
+        Prefix: savePath + "/",
+        MaxKeys: 1000,
+      }),
+    );
+
+    if (!list.Contents) return;
+
+    // Zamień "key:value" na { Key, Value }
+    const tagsToAdd = tags
+      .map((tag) => {
+        const [key, value] = tag.split(":");
+        if (!key || value === undefined) return null;
+        return { Key: key, Value: value };
+      })
+      .filter((t): t is { Key: string; Value: string } => t !== null);
+
+    if (!tagsToAdd.length) return;
+
+    for (const obj of list.Contents) {
+      if (!obj.Key) continue;
+
+      const currentTags = await s3.send(
+        new GetObjectTaggingCommand({
+          Bucket: BUCKET_NAME,
+          Key: obj.Key,
+        }),
+      );
+
+      const existing = currentTags.TagSet ?? [];
+
+      // Budujemy mapę tagów po kluczu, żeby łatwo nadpisywać
+      const tagMap = new Map<string, string>();
+      for (const t of existing) {
+        if (!t.Key || t.Value === undefined) continue;
+        tagMap.set(t.Key, t.Value);
+      }
+
+      // Dodaj / nadpisz tagi z `tags`
+      for (const t of tagsToAdd) {
+        tagMap.set(t.Key, t.Value);
+      }
+
+      const mergedTags = Array.from(tagMap.entries()).map(([Key, Value]) => ({
+        Key,
+        Value,
+      }));
+
+      await s3.send(
+        new PutObjectTaggingCommand({
+          Bucket: BUCKET_NAME,
+          Key: obj.Key,
+          Tagging: { TagSet: mergedTags },
+        }),
+      );
+    }
+  }
 }
