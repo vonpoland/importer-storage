@@ -276,6 +276,7 @@ export class S3Storage implements IStorage {
     },
   ): Promise<void> {
     const Bucket = options?.bucketName || BUCKET_NAME;
+    console.info(`removeTag to bucket ${Bucket}`);
     const list = await s3.send(
       new ListObjectsCommand({
         Bucket,
@@ -320,7 +321,7 @@ export class S3Storage implements IStorage {
   ): Promise<void> {
     if (!tags.length) return;
     const Bucket = options?.bucketName || BUCKET_NAME;
-
+    console.info(`addTag to bucket ${Bucket}`);
     const list = await s3.send(
       new ListObjectsCommand({
         Bucket,
