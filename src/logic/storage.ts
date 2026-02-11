@@ -268,10 +268,17 @@ export class S3Storage implements IStorage {
     return { result, errored };
   }
 
-  async removeTag(savePath: string, tags: Array<StorageTag>): Promise<void> {
+  async removeTag(
+    savePath: string,
+    tags: Array<StorageTag>,
+    options?: {
+      bucketName: string;
+    },
+  ): Promise<void> {
+    const Bucket = options?.bucketName || BUCKET_NAME;
     const list = await s3.send(
       new ListObjectsCommand({
-        Bucket: BUCKET_NAME,
+        Bucket,
         Prefix: savePath + "/",
         MaxKeys: 1000,
       }),
@@ -284,7 +291,7 @@ export class S3Storage implements IStorage {
 
       const currentTags = await s3.send(
         new GetObjectTaggingCommand({
-          Bucket: BUCKET_NAME,
+          Bucket,
           Key: obj.Key,
         }),
       );
@@ -296,7 +303,7 @@ export class S3Storage implements IStorage {
 
       await s3.send(
         new PutObjectTaggingCommand({
-          Bucket: BUCKET_NAME,
+          Bucket,
           Key: obj.Key,
           Tagging: { TagSet: filteredTags },
         }),
@@ -304,12 +311,19 @@ export class S3Storage implements IStorage {
     }
   }
 
-  async addTag(savePath: string, tags: Array<StorageTag>): Promise<void> {
+  async addTag(
+    savePath: string,
+    tags: Array<StorageTag>,
+    options?: {
+      bucketName: string;
+    },
+  ): Promise<void> {
     if (!tags.length) return;
+    const Bucket = options?.bucketName || BUCKET_NAME;
 
     const list = await s3.send(
       new ListObjectsCommand({
-        Bucket: BUCKET_NAME,
+        Bucket,
         Prefix: savePath + "/",
         MaxKeys: 1000,
       }),
@@ -333,7 +347,7 @@ export class S3Storage implements IStorage {
 
       const currentTags = await s3.send(
         new GetObjectTaggingCommand({
-          Bucket: BUCKET_NAME,
+          Bucket,
           Key: obj.Key,
         }),
       );
@@ -359,7 +373,7 @@ export class S3Storage implements IStorage {
 
       await s3.send(
         new PutObjectTaggingCommand({
-          Bucket: BUCKET_NAME,
+          Bucket,
           Key: obj.Key,
           Tagging: { TagSet: mergedTags },
         }),
