@@ -1,1 +1,1 @@
-export type StorageTag = "delete:60d" | "delete:1d";
+export type StorageTag = "delete:60d" | "delete:1d" | "voted";
