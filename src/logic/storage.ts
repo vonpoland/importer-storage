@@ -50,6 +50,27 @@ const s3 = new S3Client(
       }
     : {},
 );
+
+const getS3Client = (regionName?: string) => {
+  if (regionName && regionName === process.env.AWS_REGION) {
+    return s3;
+  }
+
+  return new S3Client(
+    !process.env.AWS_EXECUTION_ENV &&
+    process.env.AWS_ACCESS_KEY_ID &&
+    process.env.AWS_ACCESS_KEY &&
+    regionName
+      ? {
+          region: regionName,
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+            secretAccessKey: process.env.AWS_ACCESS_KEY!,
+          },
+        }
+      : {},
+  );
+};
 const BUCKET_NAME = process.env.AWS_BUCKET_NAME as string;
 
 if (!BUCKET_NAME) {
@@ -273,11 +294,14 @@ export class S3Storage implements IStorage {
     tags: Array<StorageTag>,
     options?: {
       bucketName: string;
+      region: string;
     },
   ): Promise<boolean> {
     const Bucket = options?.bucketName || BUCKET_NAME;
+    const s3Client = getS3Client(options?.region);
+
     console.info(`RemoveTag to bucket ${Bucket}`);
-    const list = await s3.send(
+    const list = await s3Client.send(
       new ListObjectsCommand({
         Bucket,
         Prefix: savePath + "/",
@@ -292,7 +316,7 @@ export class S3Storage implements IStorage {
     for (const obj of list.Contents) {
       if (!obj.Key) continue;
 
-      const currentTags = await s3.send(
+      const currentTags = await s3Client.send(
         new GetObjectTaggingCommand({
           Bucket,
           Key: obj.Key,
@@ -304,7 +328,7 @@ export class S3Storage implements IStorage {
           (t) => !tags.includes(`${t.Key}:${t.Value}` as StorageTag),
         ) || [];
 
-      await s3.send(
+      await s3Client.send(
         new PutObjectTaggingCommand({
           Bucket,
           Key: obj.Key,
@@ -321,15 +345,18 @@ export class S3Storage implements IStorage {
     tags: Array<StorageTag>,
     options?: {
       bucketName: string;
+      region: string;
     },
   ): Promise<boolean> {
     if (!tags.length) {
       return false;
     }
 
+    const s3Client = getS3Client(options?.region);
+
     const Bucket = options?.bucketName || BUCKET_NAME;
     console.info(`addTag to bucket ${Bucket}`);
-    const list = await s3.send(
+    const list = await s3Client.send(
       new ListObjectsCommand({
         Bucket,
         Prefix: savePath + "/",
@@ -356,7 +383,7 @@ export class S3Storage implements IStorage {
     for (const obj of list.Contents) {
       if (!obj.Key) continue;
 
-      const currentTags = await s3.send(
+      const currentTags = await s3Client.send(
         new GetObjectTaggingCommand({
           Bucket,
           Key: obj.Key,
@@ -380,7 +407,7 @@ export class S3Storage implements IStorage {
         Value,
       }));
 
-      await s3.send(
+      await s3Client.send(
         new PutObjectTaggingCommand({
           Bucket,
           Key: obj.Key,
